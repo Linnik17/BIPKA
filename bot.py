@@ -20,49 +20,40 @@ menu = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-def extract_number(text: str):
-    match = re.search(r"(\d+(\.\d+)?)", text)
-    if match:
-        return float(match.group(1))
-    return None
+def extract_numbers(text: str):
+    matches = re.finditer(r"\d+(\.\d+)?", text)
+    return [float(m.group()) for m in matches]
 
 
 @dp.message()
 async def handler(message: types.Message):
     text = message.text
 
-    # старт
     if text == "/start":
-        await message.answer("🤖 Crash Analyzer активирован", reply_markup=menu)
+        await message.answer("🤖 Бот запущен", reply_markup=menu)
         return
 
-    # кнопки
     if text == "📊 Анализ":
         await message.answer(smart_analysis(get_history()))
         return
 
     if text == "📈 История":
-        await message.answer(f"📊 Последние значения:\n{get_history()[-10:]}")
+        await message.answer(str(get_history()[-10:]))
         return
 
-    # 🔥 если пользователь кидает число или сообщение
-    number = extract_number(text)
+    numbers = extract_numbers(text)
 
-    if number:
-        add_value(number)
+    if numbers:
+        for n in numbers:
+            add_value(n)
+
         await message.answer(
-            f"📥 Принято: {number}x\n\n{smart_analysis(get_history())}"
+            f"📥 Принято: {numbers}\n\n"
+            f"{smart_analysis(get_history())}"
         )
         return
 
-    # если ссылка
-    if "http" in text:
-        await message.answer(
-            "🌐 Ссылка принята.\nПока анализ ссылок в разработке, но скоро подключим парсер 🚀"
-        )
-        return
-
-    await message.answer("Кинь коэффициент (например 2.3) или ссылку 🌐")
+    await message.answer("Кинь коэффициенты (например: 1.2 1.5 3.0)")
 
 
 async def main():
