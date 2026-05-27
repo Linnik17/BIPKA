@@ -1,10 +1,10 @@
 import asyncio
 import logging
-import random
+import re
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-from analyzer import analyze_market, generate_signal
+from analyzer import smart_analysis
 from storage import add_value, get_history
 
 TOKEN = "8910895596:AAG5KfMwTUGvTmFYUGhQhf52b0tQb3NENug"
@@ -15,35 +15,55 @@ dp = Dispatcher()
 menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="📊 Анализ")],
-        [KeyboardButton(text="🎯 Сигнал")],
         [KeyboardButton(text="📈 История")],
     ],
     resize_keyboard=True
 )
 
+def extract_number(text: str):
+    match = re.search(r"(\d+(\.\d+)?)", text)
+    if match:
+        return float(match.group(1))
+    return None
+
+
 @dp.message()
 async def handler(message: types.Message):
     text = message.text
 
+    # старт
     if text == "/start":
-        await message.answer("🤖 Бот запущен", reply_markup=menu)
+        await message.answer("🤖 Crash Analyzer активирован", reply_markup=menu)
+        return
 
-    elif text == "📊 Анализ":
-        await message.answer(analyze_market())
+    # кнопки
+    if text == "📊 Анализ":
+        await message.answer(smart_analysis(get_history()))
+        return
 
-    elif text == "🎯 Сигнал":
-        await message.answer(generate_signal(get_history()))
+    if text == "📈 История":
+        await message.answer(f"📊 Последние значения:\n{get_history()[-10:]}")
+        return
 
-    elif text == "📈 История":
-        hist = get_history()
-        await message.answer(f"📊 Последние значения:\n{hist[-10:]}")
+    # 🔥 если пользователь кидает число или сообщение
+    number = extract_number(text)
 
-    else:
-        # имитация новых коэффициентов (потом заменишь на парсинг)
-        val = round(random.uniform(1.1, 5.0), 2)
-        add_value(val)
+    if number:
+        add_value(number)
+        await message.answer(
+            f"📥 Принято: {number}x\n\n{smart_analysis(get_history())}"
+        )
+        return
 
-        await message.answer(f"📥 Новое значение добавлено: {val}x")
+    # если ссылка
+    if "http" in text:
+        await message.answer(
+            "🌐 Ссылка принята.\nПока анализ ссылок в разработке, но скоро подключим парсер 🚀"
+        )
+        return
+
+    await message.answer("Кинь коэффициент (например 2.3) или ссылку 🌐")
+
 
 async def main():
     logging.basicConfig(level=logging.INFO)
