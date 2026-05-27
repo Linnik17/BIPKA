@@ -1,14 +1,17 @@
 import asyncio
 import logging
+import random
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-TOKEN = "ТВОЙ_ТОКЕН"
+from analyzer import analyze_market, generate_signal
+from storage import add_value, get_history
+
+TOKEN = "8910895596:AAG5KfMwTUGvTmFYUGhQhf52b0tQb3NENug"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# --- КНОПКИ МЕНЮ ---
 menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="📊 Анализ")],
@@ -18,34 +21,30 @@ menu = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# --- /start ---
 @dp.message()
-async def start(message: types.Message):
-    if message.text == "/start":
-        await message.answer(
-            "Бот активирован ⚡\nВыбери действие:",
-            reply_markup=menu
-        )
-        return
+async def handler(message: types.Message):
+    text = message.text
 
-    # --- кнопки ---
-    if message.text == "📊 Анализ":
-        await message.answer(analyze_fake())
-    elif message.text == "🎯 Сигнал":
-        await message.answer(generate_signal())
-    elif message.text == "📈 История":
-        await message.answer("История пока пустая 📉")
+    if text == "/start":
+        await message.answer("🤖 Бот запущен", reply_markup=menu)
 
-# --- ЗАГЛУШКИ ЛОГИКИ ---
-def analyze_fake():
-    return "📊 Анализ: рынок нестабилен, шанс коротких множителей высокий"
+    elif text == "📊 Анализ":
+        await message.answer(analyze_market())
 
-def generate_signal():
-    import random
-    val = round(random.uniform(1.2, 3.5), 2)
-    return f"🎯 Сигнал: выход на {val}x"
+    elif text == "🎯 Сигнал":
+        await message.answer(generate_signal(get_history()))
 
-# --- ЗАПУСК ---
+    elif text == "📈 История":
+        hist = get_history()
+        await message.answer(f"📊 Последние значения:\n{hist[-10:]}")
+
+    else:
+        # имитация новых коэффициентов (потом заменишь на парсинг)
+        val = round(random.uniform(1.1, 5.0), 2)
+        add_value(val)
+
+        await message.answer(f"📥 Новое значение добавлено: {val}x")
+
 async def main():
     logging.basicConfig(level=logging.INFO)
     await dp.start_polling(bot)
